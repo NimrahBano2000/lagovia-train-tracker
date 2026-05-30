@@ -39,6 +39,7 @@ async def _http_get(client : httpx.AsyncClient, url : str, params: dict) -> dict
 
 
 async def fetch_all_station(client: httpx.AsyncClient) -> list[dict]:
+    """Fetch all Belgium stations."""
     data = await _http_get(
         client,
         f"{IRAIL_BASE_URL}/stations/",
@@ -46,7 +47,20 @@ async def fetch_all_station(client: httpx.AsyncClient) -> list[dict]:
     )
     return data.get("station",[])
 
-def matching_all_Station(stations: list[dict], query: str) -> list[dict]:
+async def fetch_liveboard(client: httpx.AsyncClient, station_name: str) -> dict:
+    """Fetch upcoming departures for one station."""
+
+    return await _http_get(
+        client,
+        f"{IRAIL_BASE_URL}/liveboard/",
+        {"station": station_name, "format": "json", "lang": "en"},
+    )
+
+
+
+
+def matching_all_station(stations: list[dict], query: str) -> list[dict]:
+    """Case-insensitive substring match against name and standardname."""
     q = query.casefold()
     return [
         s for s in stations
@@ -73,11 +87,20 @@ async def get_departures(q: str = Query(...,description = "Station name substrin
         )
     async with httpx.AsyncClient() as client:
         stations = await fetch_all_station(client)
-        matched =  matching_all_Station(stations,cleaned)
+        matched =  matching_all_station(stations,cleaned)
+    
+        raw_departures = []
+        for s in matched:
+            station_name = s["name"]
+            board = await fetch_liveboard(client, station_name)
+            for dep in (board.get("departures") or {}).get("departure", []):
+                raw_departures.append({"station": station_name, "raw": dep})
+
 
     return {        
         "query": cleaned,
         "Matching stations": [s["name"] for s in matched],
         "match_count": len(matched),
-        "departures": [],
+        "departure_count": len(raw_departures),
+        "sample_departure": raw_departures if raw_departures else None,
     }
