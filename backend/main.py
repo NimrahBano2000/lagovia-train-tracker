@@ -8,10 +8,12 @@ Endpoint:
 """
 
 from http import client
+from unicodedata import name
 from fastapi import FastAPI, HTTPException, Query
 from DeparturesResponse import DeparturesResponse
 from Departure import Departure
 import httpx
+import asyncio
 # configuration constants
 
 IRAIL_BASE_URL = "https://api.irail.be/v1"
@@ -89,12 +91,17 @@ async def get_departures(q: str = Query(...,description = "Station name substrin
         stations = await fetch_all_station(client)
         matched =  matching_all_station(stations,cleaned)
     
-        raw_departures = []
-        for s in matched:
-            station_name = s["name"]
-            board = await fetch_liveboard(client, station_name)
-            for dep in (board.get("departures") or {}).get("departure", []):
-                raw_departures.append({"station": station_name, "raw": dep})
+        station_names = [s["name"] for s in matched]
+        liveboards = await asyncio.gather(*(fetch_liveboard(client, name) for name in station_names),
+                    return_exceptions=True
+        )
+
+    raw_departures = []
+    for station_name, board in zip(station_names, liveboards):
+        if isinstance(board, Exception):
+            continue  # skip this station, keep the others
+        for dep in (board.get("departures") or {}).get("departure", []):
+            raw_departures.append({"station": station_name, "raw": dep})
 
 
     return {        
@@ -102,5 +109,5 @@ async def get_departures(q: str = Query(...,description = "Station name substrin
         "Matching stations": [s["name"] for s in matched],
         "match_count": len(matched),
         "departure_count": len(raw_departures),
-        "sample_departure": raw_departures if raw_departures else None,
+        "sample_departure": raw_departures[0] if raw_departures else None,
     }
