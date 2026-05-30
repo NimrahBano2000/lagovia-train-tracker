@@ -17,6 +17,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from typing import Optional
+from fastapi.middleware.cors import CORSMiddleware
+import time
 # configuration constants
 
 IRAIL_BASE_URL = "https://api.irail.be/v1"
@@ -25,12 +27,25 @@ DEPARTURE_WINDOW_MINUTES = 15
 MIN_QUERY_LENGTH = 3
 HTTP_TIMEOUT_SECONDS = 10.0
 BELGIAN_TZ = ZoneInfo("Europe/Brussels")
+CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+STATION_CACHE_TTL_SECONDS = 60 * 60  # 1 hour
 
 app = FastAPI(    
     title="Lagovia Train Tracker",
     description="Upcoming train departures for stations matching a substring.",
     version="1.0.0",
     )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 async def _http_get(client : httpx.AsyncClient, url : str, params: dict) -> dict:
     response = await client.get(
@@ -42,15 +57,24 @@ async def _http_get(client : httpx.AsyncClient, url : str, params: dict) -> dict
     response.raise_for_status()
     return response.json()
 
+_station_cache: dict = {"fetched_at": 0.0, "stations": []}
+async def fetch_all_stations(client: httpx.AsyncClient) -> list[dict]:
+    """Fetch (or return cached) full station list from iRail."""
+    now = time.time()
+    cached = _station_cache["stations"]
+    age = now - _station_cache["fetched_at"]
+    if cached and age < STATION_CACHE_TTL_SECONDS:
+        return cached
 
-async def fetch_all_station(client: httpx.AsyncClient) -> list[dict]:
-    """Fetch all Belgium stations."""
     data = await _http_get(
         client,
         f"{IRAIL_BASE_URL}/stations/",
         {"format": "json"},
     )
-    return data.get("station",[])
+    stations = data.get("station", [])
+    _station_cache["stations"] = stations
+    _station_cache["fetched_at"] = now
+    return stations
 
 async def fetch_liveboard(client: httpx.AsyncClient, station_name: str) -> dict:
     """Fetch upcoming departures for one station."""
@@ -130,13 +154,23 @@ async def get_departures(q: str = Query(...,description = "Station name substrin
     now_utc = datetime.now(timezone.utc)
     window_end_utc = now_utc + timedelta(minutes=DEPARTURE_WINDOW_MINUTES)
     async with httpx.AsyncClient() as client:
-        stations = await fetch_all_station(client)
-        matched =  matching_all_station(stations,cleaned)
-    
-        station_names = [s["name"] for s in matched]
-        liveboards = await asyncio.gather(*(fetch_liveboard(client, name) for name in station_names),
-                    return_exceptions=True
-        )
+        try:
+            stations = await fetch_all_stations(client)
+            matched =  matching_all_station(stations,cleaned)
+        
+            station_names = [s["name"] for s in matched]
+            liveboards = await asyncio.gather(*(fetch_liveboard(client, name) for name in station_names),
+                        return_exceptions=True
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error": "upstream_error",
+                    "message": "iRail is unavailable or returned an error.",
+                    "details": {"reason": str(exc)},
+                },
+            )
 
     departures: list[Departure] = []
     for station_name, board in zip(station_names, liveboards):
@@ -156,3 +190,8 @@ async def get_departures(q: str = Query(...,description = "Station name substrin
         generated_at_utc=now_utc.isoformat(),
         departures=departures,
     )
+
+@app.get("/health")
+async def health() -> dict:
+    """Liveness probe — useful for ops and quick local sanity checks."""
+    return {"status": "ok"}
