@@ -127,7 +127,7 @@ Liveness probe. Returns `{"status": "ok"}` with `200`.
   keep scope tight for the one-week budget; on a longer project I'd
   reach for TS.
 
-- **Single-file backend (`main.py`) with three file `Departures.py` , `DeparturesResponse.py` , `ErrorBody.py`split out.**
+- **Single-file backend (`main.py`) with three file `Departure.py` , `DeparturesResponse.py` , split out.**
   Routing and business logic in `main.py`, Pydantic response models
   in `Departure.py` and `DeparturesResponse.py` to keep the data contract separable. 
 

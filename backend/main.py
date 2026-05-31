@@ -7,8 +7,7 @@ Endpoint:
     GET /departures?q=<substring>
 """
 
-from http import client
-from unicodedata import name
+
 from fastapi import FastAPI, HTTPException, Query
 from DeparturesResponse import DeparturesResponse
 from Departure import Departure
