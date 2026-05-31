@@ -132,7 +132,7 @@ def transform_departure(
         canceled=str(raw.get("canceled", "0")) == "1",
     )
 
-@app.get("/departures")
+@app.get("/departures", response_model=DeparturesResponse)
 async def get_departures(q: str = Query(...,description = "Station name substring (>= 3 chars)"),
 ):
     cleaned = q.strip()

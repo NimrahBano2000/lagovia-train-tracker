@@ -29,7 +29,7 @@
 
 ## What I accepted as-is
 
-- The overall **project structure** (`backend/main.py`, `Departure.py`, `DeparturesResponse.py`, `ErrorBody.py`,
+- The overall **project structure** (`backend/main.py`, `Departure.py`, `DeparturesResponse.py`,
   `requirements.txt`; `frontend/src/App.jsx` + Vite scaffold).
 
 - The **Pydantic response model field names** (`train_number`,

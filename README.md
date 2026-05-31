@@ -5,9 +5,9 @@ Track Technical Challenge](./Lagovia_Train_Tracker.pdf): search for
 Belgian train stations by substring and see every upcoming departure
 within the next 15 minutes, with live delays.
 
-- **Backend**: Python 3.11.0 FastAPI, wrapping the public
+- **Backend**: Python 3.11.0 + FastAPI, wrapping the public
   [iRail API](https://docs.irail.be/).
-- **Frontend**: React 19.2.6  Vite, debounced typeahead search.
+- **Frontend**: React 19.2.6 +  Vite, debounced typeahead search.
 
 
 ## Prerequisites
@@ -127,7 +127,7 @@ Liveness probe. Returns `{"status": "ok"}` with `200`.
   keep scope tight for the one-week budget; on a longer project I'd
   reach for TS.
 
-- **Single-file backend (`main.py`) with three file `Departure.py` , `DeparturesResponse.py` , split out.**
+- **Single-file backend (`main.py`) with two file `Departure.py` , `DeparturesResponse.py` , split out.**
   Routing and business logic in `main.py`, Pydantic response models
   in `Departure.py` and `DeparturesResponse.py` to keep the data contract separable. 
 
