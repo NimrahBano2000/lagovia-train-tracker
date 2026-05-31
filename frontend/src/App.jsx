@@ -68,7 +68,7 @@ function App() {
 
       {isTooShort && <p>Keep typing — need at least 3 characters.</p>}
       {loading && <p>Loading…</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      {error && <p className="status-error">Error: {error}</p>}
       {noResults && <p>No departures in the next 15 minutes for "{query}".</p>}
 
       {hasSearched && departures.length > 0 && (
@@ -92,15 +92,15 @@ function App() {
                   {deps.map((d) => (
                     <tr
                       key={`${d.train_number}-${d.scheduled_time_utc}-${d.station}`}
-                      style={d.canceled ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}
+                      className={d.canceled ? 'canceled-row' : ''}
                     >
                       <td>{d.train_number}</td>
                       <td>{d.destination}</td>
                       <td>{d.scheduled_time_local}</td>
                       <td>
                         {d.delay_minutes > 0
-                          ? <span style={{ color: 'orange' }}>+{d.delay_minutes} min</span>
-                          : 'on time'}
+                          ? <span className="delay">+{d.delay_minutes} min</span>
+                          : <span className="on-time">on time</span>}
                       </td>
                       <td>{d.platform || '—'}</td>
                     </tr>
