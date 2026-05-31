@@ -9,34 +9,37 @@ function App() {
   const [error, setError] = useState(null);
   const isTooShort = query.length > 0 && query.length < 3;
   useEffect(() => {
-    // Only fetch when we have a long-enough query.
     if (query.length < 3) {
       setDepartures([]);
       setError(null);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError(null);
 
-    fetch(`${API_BASE}/departures?q=${encodeURIComponent(query)}`)
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) {
-          throw new Error(
-            body?.detail?.message || `Request failed (${response.status})`
-          );
-        }
-        return body;
-      })
-      .then((data) => {
-        setDepartures(data.departures);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      fetch(`${API_BASE}/departures?q=${encodeURIComponent(query)}`)
+        .then(async (response) => {
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(
+              body?.detail?.message || `Request failed (${response.status})`
+            );
+          }
+          return body;
+        })
+        .then((data) => {
+          setDepartures(data.departures);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError(err.message);
+          setLoading(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [query]);
 
   return (
